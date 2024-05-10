@@ -1,0 +1,288 @@
+#include<iostream>
+#include<string>
+#include<fstream>
+using namespace std;
+class ctnode {
+public:
+	char letter;
+	int count;
+	int father;
+	string code;
+	ctnode* pnext;
+	ctnode* pright;
+	ctnode* pleft;
+	ctnode() {
+		father = 0;
+		letter = 0;
+		count = 0;
+		pnext = NULL;
+		pright = NULL;
+		pleft = NULL;
+	}
+};
+class tree {
+public:
+	ctnode* phead;
+	tree() {
+		phead = NULL;
+	}
+	~tree() {
+		return;
+		goodbye(phead);
+	}
+	void goodbye(ctnode*ptrav) {
+		if (ptrav == NULL) {
+			return;
+		}
+		goodbye(ptrav->pleft);
+		goodbye(ptrav->pright);
+		delete ptrav;
+	}
+	void insert(ctnode* pnn) {
+		if (phead == NULL) {
+			phead = pnn;
+		}
+		else {
+			ctnode* pb = NULL;
+			ctnode* ptrav = phead;
+			while (ptrav->count < pnn->count) {
+				pb = ptrav;
+				ptrav = ptrav->pnext;
+				if (ptrav == NULL) {
+					break;
+				}
+			}
+			if (pb != NULL) {
+				pb->pnext = pnn;
+				pnn->pnext = ptrav;
+			}
+			else {
+				pnn->pnext = phead;
+				phead = pnn;
+			}
+		}
+	}
+	ctnode* pop() {
+		if (phead == NULL) {
+			return NULL;
+		}
+		ctnode* ptrav = phead;
+		phead = phead->pnext;
+		ptrav->pnext = NULL;
+		return ptrav;
+	}
+	void disp(ctnode* pt) {
+		if (pt == NULL) {
+			return;
+		}
+		cout << pt->letter << " = " << pt->count << endl;
+		disp(pt->pleft);
+		disp(pt->pright);
+	}
+	void translate(ctnode* pt, string s) {
+		if (pt == NULL) {
+			return;
+		}
+		if (pt->father != 1) {
+			cout << pt->letter << "=" << s << endl;
+			pt->code = s;
+		}
+		translate(pt->pleft, s + '1');
+		translate(pt->pright, s + '0');
+	}
+};
+class cnode {
+public:
+	char letter;
+	int count;
+	string code;
+	cnode* pnext;
+};
+class codelist {
+public:
+	cnode* phead;
+	cnode* ptail;
+	codelist() {
+		phead = NULL;
+		ptail = NULL;
+	}
+	~codelist() {
+		return;
+		cnode* ptrav=phead;
+		while (ptrav != NULL) {
+			phead = ptrav->pnext;
+			ptrav->pnext = NULL;
+			delete ptrav;
+			ptrav = phead;
+		}
+	}
+	void attach(cnode*pnn) {
+		if (phead == NULL) {
+			phead = pnn;
+			ptail = pnn;
+		}
+		else {
+			ptail->pnext = pnn;
+			ptail = pnn;
+		}
+	}
+	void setlist(ctnode* pt) {
+		cnode* pnn;
+		if (pt == NULL) {
+			return;
+		}
+		if (pt->father != 1) {
+			pnn = new cnode[1];
+			pnn->pnext = NULL;
+			pnn->letter = pt->letter;
+			pnn->count = pt->count;
+			pnn->code = pt->code;
+			attach(pnn);
+		}
+		setlist(pt->pleft);
+		setlist(pt->pright);
+	}
+};
+void main() {
+	codelist c;
+	ofstream fld("//your decompressed file location (for debuggin)", ofstream::binary);
+	ofstream flc("//your compressed file location (for debuggin)", ofstream::binary);
+	ofstream tr("//your file location (for debuggin)", ofstream::binary);
+	ifstream fl("//your file location (the original file)", ifstream::binary);
+	fl.seekg(0, fl.end);
+	int h = fl.tellg(), ctl = 0;
+	fl.seekg(0, fl.beg);
+	char *ch, l = 0;
+	ch = new char[h];
+	for (int a = 0; a <= h; a++) {
+		fl.read(&ch[a], 1);
+		tr.write(&ch[a], 1);
+	}
+	fl.close();
+	tr.close();
+	tree t;
+	ctnode* ptn, * pt, * ptb;
+	for (int i = -1; i < 255; i++) {
+		ctl = 0;
+		l = i;
+		for (int a = 0; a <= h; a++) {
+			if (ch[a] == l) {
+				ctl++;
+			}
+		}
+		if (ctl != 0) {
+			ptn = new ctnode[1];
+			ptn->pnext = NULL;
+			ptn->letter = l;
+			ptn->count = ctl;
+			t.insert(ptn);
+		}
+	}
+	pt = t.phead;
+	while (pt != NULL) {
+		cout << pt->letter << " = " << pt->count << endl;
+		pt = pt->pnext;
+	}
+	cout << "-------------------------------------------------"<<endl;
+	while (t.phead->pnext != NULL) {
+		ptb = t.pop();
+		pt = t.pop();
+		ptn = new ctnode[1];
+		ptn->pnext = NULL;
+		ptn->count = pt->count + ptb->count;
+		ptn->letter = '\0';
+		ptn->father = 1;
+		if (pt->count < ptb->count) {
+			ptn->pright = pt;
+			ptn->pleft = ptb;
+		}
+		else {
+			ptn->pright = ptb;
+			ptn->pleft = pt;
+		}
+		t.insert(ptn);
+		pt = t.phead;
+	}
+	pt = t.phead;
+	t.disp(pt);
+	cout << "-------------------------------------------------"<<endl;
+	pt = t.phead;
+	string s;
+	t.translate(pt, s);
+	cout << "-------------------------------------------------"<<endl;
+	pt = t.phead;
+	c.setlist(pt);
+	cnode* ptc;
+	ptc = c.phead;
+	while (ptc != NULL) {
+		cout << ptc->letter << " = " << ptc->count << " " << ptc->code << endl;
+		ptc = ptc->pnext;
+	}
+	cout << "-------------------------------------------------"<<endl;
+	int ibit = 7, icode = 0, k = 0;
+	char  temp = 0, mask = 1;
+	char* comp;
+	comp = new char[h];
+	for (int i = 0; i <=h; i++) {
+		ptc = c.phead;
+		while (ptc->letter != ch[i]) {
+			ptc = ptc->pnext;
+		}
+		for (icode = 0; icode < ptc->code.length(); icode++) {
+			if (ptc->code[icode] == '1') {
+				temp = temp | (mask << ibit);
+			}
+			ibit--;
+			if (ibit < 0) {
+				flc.write(&temp, 1);
+				comp[k] = temp;
+
+				k++;
+				ibit = 7;
+				temp = 0;
+			}
+		}
+	}
+	if (ibit<7) {
+		flc.write(&temp, 1);
+		comp[k] = temp;
+		k++;
+	}
+	int complength = k;
+	cout << k << endl;
+	ibit = 7;
+	mask = 1;
+	char res;
+	string r;
+	k = 0;
+	char* decomp;
+	decomp = new char[h];
+	for (int i = 0; i < complength; i++) {
+		for (ibit = 7; ibit >= 0; ibit--) {
+			res = comp[i] & (mask << ibit);
+			if (res != 0) {
+				r += '1';
+			}
+			else {
+				r += '0';
+			}
+			ptc = c.phead;
+			while (ptc != NULL) {
+				if (r == ptc->code) {
+					decomp[k] = ptc->letter;
+					fld.write(&decomp[k], 1);
+					k++;
+					r = "";
+					break;
+				}
+				ptc = ptc->pnext;
+			}
+			if (k == h) {
+				break;
+			}
+		}
+	}
+	fld.close();
+	cout << h << endl;
+	cout<<k<<endl;
+}
